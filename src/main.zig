@@ -15,6 +15,9 @@ const noiseWidth = 0.75;
 const State = struct {
     noise_type: i32,
     edit_noise_type: bool = false,
+
+    ball_x: i32 = 20,
+    ball_y: i32 = 40,
 };
 
 pub fn main() !void {
@@ -36,18 +39,23 @@ pub fn main() !void {
 
         rl.clearBackground(rl.Color.black);
 
-        drawNoise();
+        drawNoise(&state);
         drawControls(&state);
 
         rl.endDrawing();
     }
 }
 
-fn drawNoise() void {
-    const screenWidth = rl.getScreenWidth();
-    const screenHeight = rl.getScreenHeight();
+fn drawNoise(state: *State) void {
+    const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
+    const screenHeight: f32 = @floatFromInt(rl.getScreenHeight());
 
-    rl.drawRectangleRoundedLines(rl.Rectangle.init(padding, padding, @as(f32, @floatFromInt(screenWidth)) * noiseWidth, @as(f32, @floatFromInt(screenHeight)) - (padding * 2)), 0.01, 1, rl.Color.dark_blue);
+    const width = screenWidth * noiseWidth - padding * 2;
+    const height = screenHeight - padding * 2;
+
+    rl.drawRectangleRoundedLines(rl.Rectangle.init(padding, padding, width, height), 0.01, 1, rl.Color.dark_blue);
+
+    rl.drawCircle(state.ball_x, state.ball_y, 10, rl.Color.pink);
 }
 
 fn drawControls(state: *State) void {
@@ -61,10 +69,15 @@ fn drawControls(state: *State) void {
 
     _ = rgui.guiPanel(rl.Rectangle.init(x, y, width, height), "Controls");
 
-    _ = rgui.guiButton(rl.Rectangle.init(x + padding, y + 20 + padding, width - padding * 2, 28), "button");
+    if (rgui.guiButton(rl.Rectangle.init(x + padding, y + 20 + padding + 40, 28, 28), "x") == 1) {
+        state.ball_x += 10;
+    }
+    if (rgui.guiButton(rl.Rectangle.init(x + padding * 2 + 28, y + 20 + padding + 40, 28, 28), "y") == 1) {
+        state.ball_y += 10;
+    }
 
     const options = "perlin;simplex;white;other";
-    if (rgui.guiDropdownBox(rl.Rectangle.init(x + padding, y + 20 + padding + 80, width - padding * 2, 28), options, &state.noise_type, state.edit_noise_type) == 1) {
+    if (rgui.guiDropdownBox(rl.Rectangle.init(x + padding, y + padding + 20, width - padding * 2, 28), options, &state.noise_type, state.edit_noise_type) == 1) {
         state.edit_noise_type = !state.edit_noise_type;
     }
 
