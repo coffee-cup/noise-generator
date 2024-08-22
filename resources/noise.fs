@@ -1,15 +1,18 @@
 #version 330
 
-#define OCTAVES 6
-
 in vec2 fragTexCoord;
 out vec4 finalColor;
 
 uniform vec2 resolution;
 uniform float noiseType;// 0.0 for random noise, 1.0 for Perlin noise
-uniform float scale;// New uniform for scaling
-uniform float animate;// New uniform for animation control
-uniform float time;// New uniform for time
+uniform bool animate;
+uniform float scale;
+uniform int octaves;
+uniform float persistence;
+uniform float lacunarity;
+uniform float frequency;
+uniform float amplitude;
+uniform float time;// Add this for animation
 
 // Improved hash function for better randomness
 float hash(vec2 p){
@@ -38,19 +41,18 @@ float perlinNoise(vec2 p){
   (d-b)*u.x*u.y;
 }
 
-// Updated function: Fractal Brownian Motion (fBm) with normalization
+// Updated fbm function
 float fbm(vec2 p){
   float value=0.;
-  float amplitude=.5;
-  float frequency=1.;
+  float freq=frequency;
+  float amp=amplitude;
   float max_value=0.;
   
-  // Use OCTAVES define for the loop
-  for(int i=0;i<OCTAVES;i++){
-    value+=amplitude*perlinNoise(p*frequency);
-    max_value+=amplitude;
-    frequency*=2.;
-    amplitude*=.5;
+  for(int i=0;i<octaves;i++){
+    value+=amp*perlinNoise(p*freq);
+    max_value+=amp;
+    freq*=lacunarity;
+    amp*=persistence;
   }
   
   // Normalize the result
@@ -62,21 +64,15 @@ void main(){
   float noise;
   
   if(noiseType<.5){
-    // Random noise with proper scaling and animation
-    vec2 scaledUV=floor(uv*scale)/scale;
-    if(animate>.5){
-      // Animate the noise by offsetting the UV coordinates based on time
-      scaledUV+=vec2(sin(time*.5),cos(time*.3))*.1;
-    }
-    noise=hash(scaledUV);
+    // Random noise
+    noise=hash(uv*scale);
   }else{
-    // More detailed Perlin noise using fBm
-    vec2 animatedUV=uv;
-    if(animate>.5){
-      // Animate the Perlin noise by offsetting the UV coordinates based on time
-      animatedUV+=vec2(sin(time*.2),cos(time*.1))*.05;
+    // Perlin noise using fBm with new parameters
+    vec2 p=uv*scale;
+    if(animate){
+      p+=time;// Simple animation based on time
     }
-    noise=fbm(animatedUV*20.);// Increased frequency for more detail
+    noise=fbm(p);
   }
   
   finalColor=vec4(vec3(noise),1.);

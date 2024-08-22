@@ -25,8 +25,12 @@ const RandomNoiseConfig = struct {
 
 const PerlinNoiseConfig = struct {
     animate: bool = false,
-    scale: f32 = @floatFromInt(noiseWidth),
+    scale: f32 = 88.0,
     octaves: u32 = 4,
+    persistence: f32 = 0.5,
+    lacunarity: f32 = 2.0,
+    frequency: f32 = 0.22,
+    amplitude: f32 = 0.5,
 };
 
 const NoiseConfig = union(NoiseType) {
@@ -34,7 +38,7 @@ const NoiseConfig = union(NoiseType) {
     perlin: PerlinNoiseConfig,
 };
 
-const default_noise: NoiseType = .random;
+const default_noise: NoiseType = .perlin;
 
 const State = struct {
     shader: rl.Shader,
@@ -96,6 +100,12 @@ pub fn main() !void {
         .font = rl.loadFont("resources/JetBrainsMono.ttf"),
         .noise_type = default_noise,
     };
+
+    // Check for shader compilation errors
+    if (rl.getShaderLocation(state.shader, "resolution") == -1) {
+        std.debug.print("Error: Shader compilation failed\n", .{});
+        return error.ShaderCompilationFailed;
+    }
 
     if (state.noise_type == .perlin) {
         state.noise_config = .{ .perlin = .{} };
@@ -159,6 +169,14 @@ fn drawNoise(state: *State) void {
         },
         .perlin => |*config| {
             rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "scale"), &config.scale, .shader_uniform_float);
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "octaves"), &config.octaves, .shader_uniform_int);
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "persistence"), &config.persistence, .shader_uniform_float);
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "lacunarity"), &config.lacunarity, .shader_uniform_float);
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "frequency"), &config.frequency, .shader_uniform_float);
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "amplitude"), &config.amplitude, .shader_uniform_float);
+
+            const animateValue: f32 = if (config.animate) 1.0 else 0.0;
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "animate"), &animateValue, .shader_uniform_float);
         },
     }
 
@@ -195,7 +213,7 @@ fn drawControls(state: *State) void {
             const sliderHeight = 20;
             const checkboxHeight = 20;
             const componentSpacing = padding;
-            const randomBoxHeight = sliderHeight + checkboxHeight + componentSpacing * 3; // 2 components + 3 spaces (top, between, bottom)
+            const randomBoxHeight = sliderHeight + checkboxHeight + componentSpacing * 3;
             const innerControlsWidth = width - padding * 2;
 
             _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20 + groupBoxHeight + padding * 4, width, randomBoxHeight), "Random Noise Config");
@@ -212,8 +230,66 @@ fn drawControls(state: *State) void {
             }
         },
         .perlin => |*config| {
-            std.debug.print("Perlin Noise Config: {}\n", .{config});
-            // rgui.guiSliderBar(rl.Rectangle.init(x + padding, y + 20 + padding + groupBoxHeight + padding, width - padding * 2, 28), "Octaves", "Octaves", &state.noise_config.perlin.octaves, 0, 100);
+            const sliderHeight = 20;
+            const checkboxHeight = 20;
+            const componentSpacing = padding;
+            const perlinBoxHeight = sliderHeight * 6 + checkboxHeight + componentSpacing * 8;
+            const innerControlsWidth = width - padding * 2;
+            const sliderWidth = innerControlsWidth - 124;
+            const sliderX = x + padding + 88;
+
+            _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20 + groupBoxHeight + padding * 4, width, perlinBoxHeight), "Perlin Noise Config");
+
+            const baseY = y + 20 + groupBoxHeight + padding * 5;
+            var currentY: f32 = baseY;
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const scale_text = std.fmt.bufPrintZ(&buffer, "{d:.0}", .{config.scale}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Scale", scale_text, &config.scale, 2.0, @floatFromInt(noiseWidth));
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const octaves_text = std.fmt.bufPrintZ(&buffer, "{d}", .{config.octaves}) catch unreachable;
+                var octaves_value: f32 = @floatFromInt(config.octaves);
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Octaves", octaves_text, &octaves_value, 1.0, 8.0);
+                config.octaves = @intFromFloat(@round(octaves_value));
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const persistence_text = std.fmt.bufPrintZ(&buffer, "{d:.2}", .{config.persistence}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Persistence", persistence_text, &config.persistence, 0.0, 1.0);
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const lacunarity_text = std.fmt.bufPrintZ(&buffer, "{d:.2}", .{config.lacunarity}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Lacunarity", lacunarity_text, &config.lacunarity, 1.0, 4.0);
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const frequency_text = std.fmt.bufPrintZ(&buffer, "{d:.2}", .{config.frequency}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Frequency", frequency_text, &config.frequency, 0.1, 5.0);
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                var buffer: [32:0]u8 = undefined;
+                const amplitude_text = std.fmt.bufPrintZ(&buffer, "{d:.2}", .{config.amplitude}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(sliderX, currentY, sliderWidth, sliderHeight), "Amplitude", amplitude_text, &config.amplitude, 0.1, 2.0);
+                currentY += sliderHeight + componentSpacing;
+            }
+
+            {
+                _ = rgui.guiCheckBox(rl.Rectangle.init(x + padding, currentY, checkboxHeight, checkboxHeight), "Animate", &config.animate);
+            }
         },
     }
 
