@@ -117,10 +117,7 @@ pub fn main() !void {
     defer rl.unloadRenderTexture(state.noise_texture);
     defer rl.unloadFont(state.font);
 
-    // Set the font for raygui
     rgui.guiSetFont(state.font);
-
-    // Set font texture filter mode to BILINEAR
     rl.setTextureFilter(state.font.texture, .texture_filter_bilinear);
 
     while (!rl.windowShouldClose()) {
@@ -180,7 +177,6 @@ fn drawNoise(state: *State) void {
         },
     }
 
-    // Render noise to texture
     rl.beginTextureMode(state.noise_texture);
     rl.clearBackground(rl.Color.black);
     rl.beginShaderMode(state.shader);
@@ -188,7 +184,6 @@ fn drawNoise(state: *State) void {
     rl.endShaderMode();
     rl.endTextureMode();
 
-    // Draw noise texture
     rl.drawTexturePro(state.noise_texture.texture, rl.Rectangle.init(0, 0, width, -height), rl.Rectangle.init(padding, padding, width, height), .{ .x = 0, .y = 0 }, 0.0, rl.Color.white);
 }
 
@@ -201,10 +196,6 @@ fn drawControls(state: *State) void {
     const width = controlsWidth - padding * 3;
     // const height = screenHeight - padding * 2;
 
-    // rl.drawText("Controls", @intFromFloat(x + padding), y, 20, rl.Color.white);
-    // rl.drawTextEx(state.font, "Controls", .{ .x = x + padding, .y = y }, 32, 0, rl.Color.white); // Increased font size
-
-    // _ = rgui.guiPanel(rl.Rectangle.init(x, y, width, 60), "Noise Type");
     const groupBoxHeight = 28;
     _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20, width, groupBoxHeight + padding * 2), "Noise Type");
 
@@ -292,17 +283,6 @@ fn drawControls(state: *State) void {
             }
         },
     }
-
-    // _ = rgui.guiPanel(rl.Rectangle.init(x, y, width, height), "Controls");
-
-    // if (rgui.guiButton(rl.Rectangle.init(x + padding, y + 20 + padding + 40, 28, 28), "x") == 1) {
-    //     state.ball_x += 10;
-    // }
-    // if (rgui.guiButton(rl.Rectangle.init(x + padding * 2 + 28, y + 20 + padding + 40, 28, 28), "y") == 1) {
-    //     state.ball_y += 10;
-    // }
-
-    // _ = rgui.guiComboBox(rl.Rectangle.init(x + padding, y + 20 + padding + 80, width - padding * 2, 28), options, &active);
 
     const options = "random;perlin";
     if (rgui.guiDropdownBox(rl.Rectangle.init(x + padding, y + 20 + padding, width - padding * 2, groupBoxHeight), options, &state.noise_type_index, state.edit_noise_type) == 1) {

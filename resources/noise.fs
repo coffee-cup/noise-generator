@@ -2,9 +2,11 @@
 
 in vec2 fragTexCoord;
 out vec4 finalColor;
-
 uniform vec2 resolution;
-uniform float noiseType;// 0.0 for random noise, 1.0 for Perlin noise
+
+// 0.0 for random noise, 1.0 for Perlin noise
+uniform float noiseType;
+
 uniform bool animate;
 uniform float scale;
 uniform int octaves;
@@ -12,25 +14,23 @@ uniform float persistence;
 uniform float lacunarity;
 uniform float frequency;
 uniform float amplitude;
-uniform float time;// Add this for animation
+uniform float time;
 
-// Improved hash function for better randomness
-float hash(vec2 p){
+float hash2(vec2 p){
   p=fract(p*vec2(123.34,456.21));
   p+=dot(p,p+45.32);
   return fract(p.x*p.y);
 }
 
-// Improved Perlin noise function
 float perlinNoise(vec2 p){
   vec2 i=floor(p);
   vec2 f=fract(p);
   
   // Four corners in 2D of a tile
-  float a=hash(i);
-  float b=hash(i+vec2(1.,0.));
-  float c=hash(i+vec2(0.,1.));
-  float d=hash(i+vec2(1.,1.));
+  float a=hash2(i);
+  float b=hash2(i+vec2(1.,0.));
+  float c=hash2(i+vec2(0.,1.));
+  float d=hash2(i+vec2(1.,1.));
   
   // Smooth interpolation
   vec2 u=f*f*(3.-2.*f);
@@ -41,7 +41,7 @@ float perlinNoise(vec2 p){
   (d-b)*u.x*u.y;
 }
 
-// Updated fbm function
+// Fractal Brownian Motion (fBm) with normalization
 float fbm(vec2 p){
   float value=0.;
   float freq=frequency;
@@ -64,13 +64,11 @@ void main(){
   float noise;
   
   if(noiseType<.5){
-    // Random noise
-    noise=hash(uv*scale);
+    noise=hash2(uv*scale);
   }else{
-    // Perlin noise using fBm with new parameters
     vec2 p=uv*scale;
     if(animate){
-      p+=time;// Simple animation based on time
+      p+=time;
     }
     noise=fbm(p);
   }
