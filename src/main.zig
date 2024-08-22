@@ -44,8 +44,8 @@ const style = [_]Style{
     .{ .controlId = 0, .propertyId = 4, .colorValue = 0xfcd85bff }, // DEFAULT_BASE_COLOR_FOCUSED
     .{ .controlId = 0, .propertyId = 5, .colorValue = 0xfc6955ff }, // DEFAULT_TEXT_COLOR_FOCUSED
     .{ .controlId = 0, .propertyId = 6, .colorValue = 0xb34848ff }, // DEFAULT_BORDER_COLOR_PRESSED
-    .{ .controlId = 0, .propertyId = 7, .colorValue = 0xeb7272ff }, // DEFAULT_BASE_COLOR_PRESSED
-    .{ .controlId = 0, .propertyId = 8, .colorValue = 0xbd4a4aff }, // DEFAULT_TEXT_COLOR_PRESSED
+    .{ .controlId = 0, .propertyId = 7, .colorValue = 0x8a014aff }, // DEFAULT_BASE_COLOR_PRESSED
+    .{ .controlId = 0, .propertyId = 8, .colorValue = 0xff91ccff }, // DEFAULT_TEXT_COLOR_PRESSED
     .{ .controlId = 0, .propertyId = 9, .colorValue = 0x94795dff }, // DEFAULT_BORDER_COLOR_DISABLED
     .{ .controlId = 0, .propertyId = 10, .colorValue = 0xc2a37aff }, // DEFAULT_BASE_COLOR_DISABLED
     .{ .controlId = 0, .propertyId = 11, .colorValue = 0x9c8369ff }, // DEFAULT_TEXT_COLOR_DISABLED
