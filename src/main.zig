@@ -147,9 +147,15 @@ fn drawNoise(state: *State) void {
     rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "resolution"), &resolution, .shader_uniform_vec2);
     rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "noiseType"), &noise_type, .shader_uniform_float);
 
+    const time: f32 = @floatCast(rl.getTime());
+    rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "time"), &time, .shader_uniform_float);
+
     switch (state.noise_config) {
         .random => |*config| {
             rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "scale"), &config.scale, .shader_uniform_float);
+
+            const animateValue: f32 = if (config.animate) 1.0 else 0.0;
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "animate"), &animateValue, .shader_uniform_float);
         },
         .perlin => |*config| {
             rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "scale"), &config.scale, .shader_uniform_float);
@@ -186,15 +192,24 @@ fn drawControls(state: *State) void {
 
     switch (state.noise_config) {
         .random => |*config| {
-            const randomBoxHeight = 60;
+            const sliderHeight = 20;
+            const checkboxHeight = 20;
+            const componentSpacing = padding;
+            const randomBoxHeight = sliderHeight + checkboxHeight + componentSpacing * 3; // 2 components + 3 spaces (top, between, bottom)
             const innerControlsWidth = width - padding * 2;
 
-            _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20 + groupBoxHeight + padding * 4, width, randomBoxHeight + padding * 2), "Random Noise Config");
+            _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20 + groupBoxHeight + padding * 4, width, randomBoxHeight), "Random Noise Config");
 
-            var buffer: [32:0]u8 = undefined;
-            const scale_text = std.fmt.bufPrintZ(&buffer, "{d:.0}", .{config.scale}) catch unreachable;
+            const baseY = y + 20 + groupBoxHeight + padding * 5;
+            {
+                var buffer: [32:0]u8 = undefined;
+                const scale_text = std.fmt.bufPrintZ(&buffer, "{d:.0}", .{config.scale}) catch unreachable;
+                _ = rgui.guiSlider(rl.Rectangle.init(x + padding + 40, baseY, innerControlsWidth - 66, sliderHeight), "Scale", scale_text, &config.scale, 2.0, @floatFromInt(noiseWidth));
+            }
 
-            _ = rgui.guiSlider(rl.Rectangle.init(x + padding + 40, y + 20 + groupBoxHeight + padding * 5, innerControlsWidth - 58, 20), "Scale", scale_text, &config.scale, 2.0, @floatFromInt(noiseWidth));
+            {
+                _ = rgui.guiCheckBox(rl.Rectangle.init(x + padding, baseY + sliderHeight + componentSpacing, checkboxHeight, checkboxHeight), "Animate", &config.animate);
+            }
         },
         .perlin => |*config| {
             std.debug.print("Perlin Noise Config: {}\n", .{config});

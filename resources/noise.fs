@@ -8,6 +8,8 @@ out vec4 finalColor;
 uniform vec2 resolution;
 uniform float noiseType;// 0.0 for random noise, 1.0 for Perlin noise
 uniform float scale;// New uniform for scaling
+uniform float animate;// New uniform for animation control
+uniform float time;// New uniform for time
 
 // Improved hash function for better randomness
 float hash(vec2 p){
@@ -60,12 +62,21 @@ void main(){
   float noise;
   
   if(noiseType<.5){
-    // Random noise with proper scaling
+    // Random noise with proper scaling and animation
     vec2 scaledUV=floor(uv*scale)/scale;
+    if(animate>.5){
+      // Animate the noise by offsetting the UV coordinates based on time
+      scaledUV+=vec2(sin(time*.5),cos(time*.3))*.1;
+    }
     noise=hash(scaledUV);
   }else{
     // More detailed Perlin noise using fBm
-    noise=fbm(uv*20.);// Increased frequency for more detail
+    vec2 animatedUV=uv;
+    if(animate>.5){
+      // Animate the Perlin noise by offsetting the UV coordinates based on time
+      animatedUV+=vec2(sin(time*.2),cos(time*.1))*.05;
+    }
+    noise=fbm(animatedUV*20.);// Increased frequency for more detail
   }
   
   finalColor=vec4(vec3(noise),1.);
