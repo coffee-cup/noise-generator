@@ -10,19 +10,37 @@ const initScreenHeight = 800;
 
 const padding = 10;
 
-const noiseWidth = 0.75;
+const noiseWidth = initScreenWidth - controlsWidth;
+const controlsWidth = 360;
 
 const NoiseType = enum {
-    Random,
-    Perlin,
+    random,
+    perlin,
 };
 
-const default_noise: NoiseType = .Perlin;
+const RandomNoiseConfig = struct {
+    animate: bool = false,
+    scale: f32 = @floatFromInt(noiseWidth),
+};
+
+const PerlinNoiseConfig = struct {
+    animate: bool = false,
+    scale: f32 = @floatFromInt(noiseWidth),
+    octaves: u32 = 4,
+};
+
+const NoiseConfig = union(NoiseType) {
+    random: RandomNoiseConfig,
+    perlin: PerlinNoiseConfig,
+};
+
+const default_noise: NoiseType = .random;
 
 const State = struct {
     shader: rl.Shader,
     noise_texture: rl.RenderTexture2D,
     noise_type: NoiseType = default_noise,
+    noise_config: NoiseConfig = .{ .perlin = .{} },
     noise_type_index: i32 = @intFromEnum(default_noise),
     edit_noise_type: bool = false,
     font: rl.Font,
@@ -58,7 +76,7 @@ const style = [_]Style{
 
 pub fn main() !void {
     rl.setConfigFlags(rl.ConfigFlags{
-        .window_resizable = true,
+        .window_resizable = false,
     });
 
     rl.initWindow(initScreenWidth, initScreenHeight, window_title);
@@ -74,9 +92,17 @@ pub fn main() !void {
 
     var state = State{
         .shader = rl.loadShader(null, "resources/noise.fs"),
-        .noise_texture = rl.loadRenderTexture(@intFromFloat(initScreenWidth * noiseWidth), initScreenHeight - padding * 2),
+        .noise_texture = rl.loadRenderTexture(@intFromFloat(initScreenWidth - controlsWidth), initScreenHeight - padding * 2),
         .font = rl.loadFont("resources/JetBrainsMono.ttf"),
+        .noise_type = default_noise,
     };
+
+    if (state.noise_type == .perlin) {
+        state.noise_config = .{ .perlin = .{} };
+    } else if (state.noise_type == .random) {
+        state.noise_config = .{ .random = .{} };
+    }
+
     defer rl.unloadShader(state.shader);
     defer rl.unloadRenderTexture(state.noise_texture);
     defer rl.unloadFont(state.font);
@@ -103,7 +129,7 @@ fn drawNoise(state: *State) void {
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
     const screenHeight: f32 = @floatFromInt(rl.getScreenHeight());
 
-    const width = screenWidth * noiseWidth;
+    const width = screenWidth - controlsWidth;
     const height = screenHeight - padding * 2;
 
     // Update noise texture size if window is resized
@@ -121,6 +147,15 @@ fn drawNoise(state: *State) void {
     rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "resolution"), &resolution, .shader_uniform_vec2);
     rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "noiseType"), &noise_type, .shader_uniform_float);
 
+    switch (state.noise_config) {
+        .random => |*config| {
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "scale"), &config.scale, .shader_uniform_float);
+        },
+        .perlin => |*config| {
+            rl.setShaderValue(state.shader, rl.getShaderLocation(state.shader, "scale"), &config.scale, .shader_uniform_float);
+        },
+    }
+
     // Render noise to texture
     rl.beginTextureMode(state.noise_texture);
     rl.clearBackground(rl.Color.black);
@@ -137,13 +172,35 @@ fn drawControls(state: *State) void {
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
     // const screenHeight: f32 = @floatFromInt(rl.getScreenHeight());
 
-    const x = screenWidth * noiseWidth + padding * 2;
+    const x = screenWidth - controlsWidth + padding * 2;
     const y = padding;
-    const width = screenWidth - x - padding;
+    const width = controlsWidth - padding * 3;
     // const height = screenHeight - padding * 2;
 
     // rl.drawText("Controls", @intFromFloat(x + padding), y, 20, rl.Color.white);
-    rl.drawTextEx(state.font, "Controls", .{ .x = x + padding, .y = y }, 32, 0, rl.Color.white); // Increased font size
+    // rl.drawTextEx(state.font, "Controls", .{ .x = x + padding, .y = y }, 32, 0, rl.Color.white); // Increased font size
+
+    // _ = rgui.guiPanel(rl.Rectangle.init(x, y, width, 60), "Noise Type");
+    const groupBoxHeight = 28;
+    _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20, width, groupBoxHeight + padding * 2), "Noise Type");
+
+    switch (state.noise_config) {
+        .random => |*config| {
+            const randomBoxHeight = 60;
+            const innerControlsWidth = width - padding * 2;
+
+            _ = rgui.guiGroupBox(rl.Rectangle.init(x, y + 20 + groupBoxHeight + padding * 4, width, randomBoxHeight + padding * 2), "Random Noise Config");
+
+            var buffer: [32:0]u8 = undefined;
+            const scale_text = std.fmt.bufPrintZ(&buffer, "{d:.0}", .{config.scale}) catch unreachable;
+
+            _ = rgui.guiSlider(rl.Rectangle.init(x + padding + 40, y + 20 + groupBoxHeight + padding * 5, innerControlsWidth - 58, 20), "Scale", scale_text, &config.scale, 2.0, @floatFromInt(noiseWidth));
+        },
+        .perlin => |*config| {
+            std.debug.print("Perlin Noise Config: {}\n", .{config});
+            // rgui.guiSliderBar(rl.Rectangle.init(x + padding, y + 20 + padding + groupBoxHeight + padding, width - padding * 2, 28), "Octaves", "Octaves", &state.noise_config.perlin.octaves, 0, 100);
+        },
+    }
 
     // _ = rgui.guiPanel(rl.Rectangle.init(x, y, width, height), "Controls");
 
@@ -154,13 +211,19 @@ fn drawControls(state: *State) void {
     //     state.ball_y += 10;
     // }
 
+    // _ = rgui.guiComboBox(rl.Rectangle.init(x + padding, y + 20 + padding + 80, width - padding * 2, 28), options, &active);
+
     const options = "random;perlin";
-    if (rgui.guiDropdownBox(rl.Rectangle.init(x + padding, y + padding + 30, width - padding * 2, 36), options, &state.noise_type_index, state.edit_noise_type) == 1) {
+    if (rgui.guiDropdownBox(rl.Rectangle.init(x + padding, y + 20 + padding, width - padding * 2, groupBoxHeight), options, &state.noise_type_index, state.edit_noise_type) == 1) {
         state.edit_noise_type = !state.edit_noise_type;
         state.noise_type = @as(NoiseType, @enumFromInt(state.noise_type_index));
-    }
 
-    // _ = rgui.guiComboBox(rl.Rectangle.init(x + padding, y + 20 + padding + 80, width - padding * 2, 28), options, &active);
+        if (state.noise_type == .random) {
+            state.noise_config = .{ .random = .{} };
+        } else {
+            state.noise_config = .{ .perlin = .{} };
+        }
+    }
 }
 
 test "simple test" {

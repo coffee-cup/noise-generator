@@ -7,6 +7,7 @@ out vec4 finalColor;
 
 uniform vec2 resolution;
 uniform float noiseType;// 0.0 for random noise, 1.0 for Perlin noise
+uniform float scale;// New uniform for scaling
 
 // Improved hash function for better randomness
 float hash(vec2 p){
@@ -59,8 +60,9 @@ void main(){
   float noise;
   
   if(noiseType<.5){
-    // Random noise
-    noise=hash(uv*100.);
+    // Random noise with proper scaling
+    vec2 scaledUV=floor(uv*scale)/scale;
+    noise=hash(scaledUV);
   }else{
     // More detailed Perlin noise using fBm
     noise=fbm(uv*20.);// Increased frequency for more detail
